@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MastodonR
  * Description: Sends WordPress posts to Mastodon using the first post image, post text, EXIF metadata, and hashtags.
- * Version: 0.1.1
+ * Version: 0.1.2
  * Author: MastodonR
  * License: GPL-2.0-or-later
  */
