@@ -14,6 +14,7 @@ if (!defined('ABSPATH')) {
 class MastodonR_To_Mastodon {
     const OPTION_KEY = 'mastodonr_settings';
     const OAUTH_SCOPES = 'read write:statuses write:media';
+    const MAX_STATUS_CHARACTERS = 500;
     const NONCE_ACTION_SEND = 'mastodonr_send_to_mastodon';
     const META_LAST_STATUS_ID = '_mastodonr_last_status_id';
     const META_LAST_STATUS_TIME = '_mastodonr_last_status_gmt';
@@ -438,13 +439,16 @@ class MastodonR_To_Mastodon {
         if (!empty($settings['default_tags'])) {
             $tags = array_merge($tags, preg_split('/\s+/', trim($settings['default_tags'])));
         }
-        $tags = $this->normalize_tags(array_merge($tags, $this->extract_exif_tags($image_data['path'])));
-        $hashtags = '';
-        foreach ($tags as $tag) {
-            $hashtags .= ' #' . preg_replace('/[^a-zA-Z0-9_]/', '', $tag);
+        $post_tags = get_the_tags($post->ID);
+        if (is_array($post_tags)) {
+            foreach ($post_tags as $post_tag) {
+                if (!empty($post_tag->name)) {
+                    $tags[] = $post_tag->name;
+                }
+            }
         }
-        $status = trim($post->post_title . "\n\n" . $caption . $hashtags);
-        $status = mb_substr($status, 0, 500);
+        $tags = $this->normalize_tags(array_merge($tags, $this->extract_exif_tags($image_data['path'])));
+        $status = $this->build_status_text($post->post_title, $caption, $tags);
 
         $media = $this->upload_media($settings, $image_data['path'], mb_substr($caption, 0, 1500));
         if (!empty($image_data['temp']) && file_exists($image_data['path'])) {
@@ -599,6 +603,23 @@ class MastodonR_To_Mastodon {
         return mb_substr(trim(preg_replace('/\s+/', ' ', $content)), 0, 5000);
     }
 
+    private function build_status_text($title, $caption, $tags) {
+        $body = trim($title . "\n\n" . $caption);
+        $body = mb_substr($body, 0, self::MAX_STATUS_CHARACTERS);
+        $text = $body;
+
+        foreach ($tags as $tag) {
+            $separator = $text === '' ? '' : ($text === $body ? "\n\n" : ' ');
+            $candidate = $text . $separator . '#' . $tag;
+            if (mb_strlen($candidate) > self::MAX_STATUS_CHARACTERS) {
+                break;
+            }
+            $text = $candidate;
+        }
+
+        return $text;
+    }
+
     private function extract_exif_tags($image_path) {
         $tags = array();
         if (!function_exists('exif_read_data')) {
@@ -633,7 +654,8 @@ class MastodonR_To_Mastodon {
         $clean = array();
         foreach ($tags as $tag) {
             $tag = strtolower(trim(sanitize_text_field((string) $tag)));
-            $tag = preg_replace('/[^a-z0-9_\-]/', '', preg_replace('/\s+/', '_', $tag));
+            $tag = str_replace('-', '_', $tag);
+            $tag = preg_replace('/[^a-z0-9_]/', '', preg_replace('/\s+/', '_', $tag));
             if ($tag !== '') {
                 $clean[] = $tag;
             }

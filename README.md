@@ -9,7 +9,8 @@ MastodonR sends WordPress posts to a Mastodon account when posts are published. 
 - Registers a Mastodon application and connects through OAuth 2.
 - Uploads the image with the post text as alt text.
 - Uses the post title and stripped post content as the status text.
-- Adds hashtags from configured defaults and available EXIF metadata.
+- Adds hashtags from configured defaults, WordPress post tags, and available EXIF metadata.
+- Keeps hashtags whole when applying Mastodon's 500-character status limit; hyphens in tags become underscores.
 - Supports public, unlisted, followers-only, and direct visibility.
 
 ## Install
