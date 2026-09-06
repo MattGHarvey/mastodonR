@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MastodonR
  * Description: Sends WordPress posts to Mastodon using the first post image, post text, EXIF metadata, and hashtags.
- * Version: 0.1.2
+ * Version: 0.1.8
  * Author: MastodonR
  * License: GPL-2.0-or-later
  */
@@ -600,6 +600,7 @@ class MastodonR_To_Mastodon {
 
     private function build_caption($post) {
         $content = wp_strip_all_tags($post->post_content, true);
+        $content = html_entity_decode($content, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         return mb_substr(trim(preg_replace('/\s+/', ' ', $content)), 0, 5000);
     }
 
@@ -653,9 +654,12 @@ class MastodonR_To_Mastodon {
     private function normalize_tags($tags) {
         $clean = array();
         foreach ($tags as $tag) {
-            $tag = strtolower(trim(sanitize_text_field((string) $tag)));
-            $tag = str_replace('-', '_', $tag);
-            $tag = preg_replace('/[^a-z0-9_]/', '', preg_replace('/\s+/', '_', $tag));
+            if (strpos((string) $tag, '&') !== false) {
+                continue;
+            }
+            $tag = remove_accents(strtolower(trim(sanitize_text_field((string) $tag))));
+            $tag = preg_replace('/\s*\([^)]*\)/', '', $tag);
+            $tag = preg_replace('/[^a-z0-9]/', '', preg_replace('/[\s\-]+/', '', $tag));
             if ($tag !== '') {
                 $clean[] = $tag;
             }
